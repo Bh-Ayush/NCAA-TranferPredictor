@@ -2,36 +2,38 @@
 
 A two-part machine learning system for NCAA basketball analytics: (1) predicting whether transfer portal players will improve at their destination school, and (2) ranking ACC conference teams for the upcoming season using a predictive efficiency model.
 
-Built with **Polars** for data engineering, **DuckDB** for analytical SQL, **XGBoost/LightGBM** for modeling, **Streamlit** for the frontend, and **FastAPI** for serving predictions.
+Built with **Polars** for data engineering, **DuckDB** for analytical SQL, **XGBoost/LightGBM** for modeling, **Streamlit** for the frontend, and **FastAPI** for serving predictions. Trained on **real BartTorvik data** spanning 2018-2025 (39,263 player-seasons, 2,851 team-seasons).
 
 ---
 
 ## Results Summary
 
-### Part 1 — Transfer Success Prediction Model
+### Part 1 -- Transfer Success Prediction Model
 
-| Metric | Fold 1 (Val 2023) | Fold 2 (Val 2024) | Fold 3 (Val 2025) | **Mean** |
-|--------|-------------------|-------------------|-------------------|----------|
-| PR-AUC | 0.605 | 0.653 | 0.578 | **0.612** |
-| ROC-AUC | 0.568 | 0.650 | 0.605 | **0.608** |
-| Brier Score | 0.251 | 0.240 | 0.245 | **0.246** |
+| Metric | Fold 1 (Val 2021) | Fold 2 (Val 2022) | Fold 3 (Val 2023) | Fold 4 (Val 2024) | Fold 5 (Val 2025) | **Mean** |
+|--------|-------------------|-------------------|-------------------|-------------------|-------------------|----------|
+| PR-AUC | 0.728 | 0.838 | 0.848 | 0.833 | 0.855 | **0.820** |
+| ROC-AUC | 0.746 | 0.821 | 0.811 | 0.757 | 0.805 | **0.788** |
+| Brier Score | 0.219 | 0.172 | 0.173 | 0.186 | 0.174 | **0.185** |
 
-- **1,149 transfers** across 2022–2025 seasons
+- **4,560 real transfers** derived from BartTorvik player data across 2018-2025 seasons
 - **44 engineered features** spanning individual performance, team context, conference deltas, and interaction terms
-- **Temporal cross-validation**: train on seasons ≤N, validate on N+1 (no data leakage)
-- Target: binary classification — transfer "succeeds" if post-transfer ORtg ≥ pre-transfer ORtg
+- **73.4% overall accuracy** with 79% recall on successful transfers
+- **Temporal cross-validation**: train on seasons <=N, validate on N+1 (no data leakage, min 2 training seasons)
+- Target: binary classification -- transfer "succeeds" if post-transfer ORtg >= pre-transfer ORtg
 
-### Part 2 — Conference Team Ranking Engine
+### Part 2 -- Conference Team Ranking Engine
 
-| Metric | Fold 1 (Val 2022) | Fold 2 (Val 2023) | Fold 3 (Val 2024) | **Mean** |
-|--------|-------------------|-------------------|-------------------|----------|
-| MAE | 5.90 | 6.19 | 5.29 | **5.80** |
-| RMSE | 7.28 | 7.59 | 6.71 | **7.19** |
-| R² | 0.429 | 0.467 | 0.548 | **0.481** |
+| Metric | Fold 1 (Val 2020) | Fold 2 (Val 2021) | Fold 3 (Val 2022) | Fold 4 (Val 2023) | Fold 5 (Val 2024) | **Mean** |
+|--------|-------------------|-------------------|-------------------|-------------------|-------------------|----------|
+| MAE | 4.81 | 5.26 | 4.99 | 5.31 | 5.41 | **5.15** |
+| RMSE | 5.93 | 6.50 | 6.24 | 6.60 | 6.84 | **6.42** |
+| R-squared | 0.751 | 0.679 | 0.698 | 0.704 | 0.710 | **0.708** |
 
-- Trained on **all 191 D1 teams per season**, filtered to **current ACC 18** for output
-- Predicts next-season adjusted efficiency margin (adj_o − adj_d)
-- Handles conference realignment: Cal, Stanford, SMU have no ACC history — features are conference-agnostic
+- Trained on **all 350+ D1 teams per season** (2,474 team-seasons total), filtered to **current ACC 18** for output
+- Predicts next-season adjusted efficiency margin (adj_o - adj_d)
+- **R-squared of 0.71** means the model explains 71% of the variance in next-season team performance
+- Handles conference realignment: Cal, Stanford, SMU have no ACC history -- features are conference-agnostic
 
 ---
 
@@ -42,14 +44,14 @@ ncaa-predictor/
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
+├── generate_report.py              # Stakeholder PDF report generator
 ├── data/
-│   ├── raw/                        # Parquet files (team, player, transfer, coaching data)
+│   ├── raw/                        # Parquet files (scraped from BartTorvik)
 │   └── processed/                  # Engineered feature matrices
 ├── models/
 │   ├── transfer_xgb_final.json     # Trained XGBoost classifier
 │   ├── ranking_lgbm_final.txt      # Trained LightGBM regressor
 │   ├── acc_rankings.csv            # Predicted ACC 2025-26 rankings
-│   ├── project_summary.pdf         # 2-page non-technical summary
 │   ├── transfer_model_metrics.json
 │   └── ranking_model_metrics.json
 ├── notebooks/
@@ -68,17 +70,32 @@ ncaa-predictor/
 │   └── queries.sql                 # 10 analytical queries (DuckDB)
 ├── src/
 │   ├── __init__.py
-│   ├── data_generator.py           # Synthetic data (mirrors BartTorvik schemas)
-│   ├── scrapers.py                 # Real scrapers for BartTorvik & VerbalCommits
+│   ├── data_generator.py           # Synthetic data fallback (mirrors BartTorvik schemas)
+│   ├── scrapers.py                 # BartTorvik scrapers + transfer derivation
 │   ├── feature_engineering.py      # Polars feature pipelines for both models
 │   ├── transfer_model.py           # Part 1: XGBoost transfer success classifier
 │   ├── ranking_model.py            # Part 2: LightGBM ranking regressor
 │   └── duckdb_runner.py            # SQL query executor
 ├── api/
-│   ├── __init__.py
 │   └── main.py                     # FastAPI endpoints (5 routes)
 └── app/
     └── streamlit_app.py            # Two-tab Streamlit dashboard
+```
+
+---
+
+## Data Pipeline
+
+The system scrapes real NCAA basketball data from **BartTorvik** (barttorvik.com), a leading source for college basketball advanced stats:
+
+1. **Team stats** -- scraped from BartTorvik's JSON endpoint (`{year}_team_results.json`), covering ~350 D1 teams per season with adjusted offensive/defensive efficiency, Barthag, tempo, SOS, and WAB
+2. **Player stats** -- scraped from BartTorvik's CSV endpoint (`getadvstats.php`), covering ~5,000 players per season with ORtg, usage, shooting splits, BPM, and more
+3. **Transfers** -- derived by tracking player IDs across consecutive seasons; when a player appears on a different team, we capture both their pre-transfer and post-transfer stats automatically (4,560 transfers across 2018-2025)
+4. **Coaching tenure** -- derived from team stats (coach column when available, default otherwise)
+5. **Returning production** -- computed from player data by measuring what fraction of a team's prior-season minutes return
+
+```
+python src/scrapers.py --all    # Scrapes everything (~2 min with rate limiting)
 ```
 
 ---
@@ -91,26 +108,26 @@ ncaa-predictor/
 
 **Feature engineering** (44 features in 6 categories):
 
-1. **Pre-transfer individual performance** — ORtg, usage rate, BPM, eFG%, TS%, assist/TO rates, rebound rates, stocks (blocks + steals), FT rate, PORPAG
-2. **Origin team context** — Adjusted offensive/defensive efficiency, Barthag, tempo
-3. **Destination team context** — Same metrics for the receiving school
-4. **Contextual deltas** — Destination minus origin quality (Barthag delta, adj_o delta, tempo delta), conference jump direction (power ↔ mid-major)
-5. **Player profile** — Recruiting star rating, class year, height
-6. **Interaction terms** — Usage × quality delta, MPG × conference jump, BPM × offensive delta
+1. **Pre-transfer individual performance** -- ORtg, usage rate, BPM, eFG%, TS%, assist/TO rates, rebound rates, stocks (blocks + steals), FT rate, PORPAG
+2. **Origin team context** -- Adjusted offensive/defensive efficiency, Barthag, tempo
+3. **Destination team context** -- Same metrics for the receiving school
+4. **Contextual deltas** -- Destination minus origin quality (Barthag delta, adj_o delta, tempo delta), conference jump direction (power vs mid-major)
+5. **Player profile** -- Recruiting star rating, class year, height
+6. **Interaction terms** -- Usage x quality delta, MPG x conference jump, BPM x offensive delta
 
-**Evaluation**: Temporal cross-validation with PR-AUC as the primary metric (appropriate for the ~52/48 class balance). Calibration curve confirms predicted probabilities are well-calibrated.
+**Evaluation**: Temporal cross-validation (5 folds, min 2 training seasons per fold) with PR-AUC as the primary metric. Calibration curve confirms predicted probabilities are well-calibrated.
 
 ### Team Ranking Engine
 
 **Problem framing**: Given a team's current-season performance metrics, returning production, portal activity, and coaching stability, predict their next-season adjusted efficiency margin.
 
-**Key design decision**: Model is trained on all ~191 D1 teams per season to maximize learning signal, then filtered to the **current 2025-26 ACC membership** (18 teams including Cal, Stanford, SMU) for presentation. This handles realignment gracefully — features are conference-agnostic efficiency metrics, not conference-specific historical rankings.
+**Key design decision**: Model is trained on all ~350 D1 teams per season to maximize learning signal, then filtered to the **current 2025-26 ACC membership** (18 teams including Cal, Stanford, SMU) for presentation. This handles realignment gracefully -- features are conference-agnostic efficiency metrics, not conference-specific historical rankings.
 
 **Features** (17):
 - Prior season: adj_o, adj_d, adj_t, Barthag, efficiency margin, WAB, win%, SOS
 - Roster continuity: returning production %, incoming transfers count, transfer composite rating, average transfer quality
 - Coaching: tenure years, stability bucket
-- Context: power conference indicator, returning production × quality interaction
+- Context: power conference indicator, returning production x quality interaction
 
 ---
 
@@ -144,20 +161,8 @@ The `sql/queries.sql` file contains 10 analytical queries demonstrating:
 | Ranking regressor | **LightGBM** | Efficient gradient boosting for regression |
 | Explainability | **SHAP** | TreeExplainer for feature importance |
 | Visualization | **matplotlib/seaborn** | Evaluation plots |
-| API (Phase 3) | **FastAPI** | Prediction endpoint serving |
-| Dashboard (Phase 3) | **Streamlit** | Interactive frontend |
-
----
-
-## Data Sources
-
-**Current implementation** uses a synthetic data generator (`src/data_generator.py`) that mirrors exact BartTorvik schemas with realistic distributions. To use real data:
-
-1. **BartTorvik** (barttorvik.com) — Player and team advanced stats, 2021–2025
-2. **VerbalCommits** (verbalcommits.com) — Historical transfer portal entries
-3. **247Sports** — Composite recruiting star ratings
-
-Run `python src/scrapers.py --all` locally (requires unrestricted internet) to pull real data. The pipeline automatically uses whatever parquet files are in `data/raw/`.
+| API | **FastAPI** | Prediction endpoint serving |
+| Dashboard | **Streamlit** | Interactive frontend |
 
 ---
 
@@ -165,20 +170,20 @@ Run `python src/scrapers.py --all` locally (requires unrestricted internet) to p
 
 ```bash
 # Clone and setup
-git clone https://github.com/Bh-Ayush/ncaa-transfer-predictor.git
-cd ncaa-transfer-predictor
+git clone https://github.com/Bh-Ayush/NCAA-TranferPredictor.git
+cd NCAA-TranferPredictor
 python -m venv venv && source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
-# Generate synthetic data (or run scrapers for real data)
-python -c "from src.data_generator import generate_all_data; [df.write_parquet(f'data/raw/{k}.parquet') for k, df in generate_all_data().items()]"
+# Scrape real data from BartTorvik (~2 min)
+python src/scrapers.py --all
 
 # Run both models
-python src/transfer_model.py    # Part 1: Transfer Success Predictor
-python src/ranking_model.py     # Part 2: ACC Team Ranking Engine
+python -m src.transfer_model    # Part 1: Transfer Success Predictor
+python -m src.ranking_model     # Part 2: ACC Team Ranking Engine
 
 # Run SQL queries
-python src/duckdb_runner.py
+python -m src.duckdb_runner
 
 # Launch API server
 uvicorn api.main:app --reload --port 8000
@@ -200,31 +205,13 @@ streamlit run app/streamlit_app.py
 ### Streamlit Dashboard
 
 Two-tab interface:
-- **Tab 1 — Transfer Predictor**: Interactive form with all 44 features, real-time prediction with probability gauge, confidence tier, and context summary
-- **Tab 2 — ACC Rankings**: Horizontal bar chart, sortable table, current-vs-predicted scatter plot, embedded model evaluation plots
-
----
-
-## Key Findings
-
-### Transfer Success Patterns
-
-- **Mid-major → Power conference** transfers have the highest success rate (58.9%), suggesting these players were undervalued at their origin
-- **Power → Mid-major** transfers show the lowest success rate (36.6%) — players stepping down in competition still struggle
-- **Juniors** show the highest success rate among class years, likely due to experience + remaining eligibility
-- Transfers to **Tier 1 destinations** (top 25% by Barthag) succeed 62% of the time, compared to 43.5% for Tier 4
-
-### Ranking Model Insights
-
-- **Prior season efficiency margin** and **Barthag** are the strongest predictors of next-season performance (SHAP)
-- **Returning production %** is the most important non-efficiency feature — teams that retain their core improve
-- **Coaching tenure** shows diminishing returns past ~6 years
-- The model improves with more training data (R² increases from 0.43 → 0.55 across folds)
+- **Tab 1 -- Transfer Predictor**: Interactive form with all 44 features, real-time prediction with probability gauge, confidence tier, and context summary
+- **Tab 2 -- ACC Rankings**: Horizontal bar chart, sortable table, current-vs-predicted scatter plot, embedded model evaluation plots
 
 ---
 
 ## Author
 
-**Ayush Bhardwaj** — [GitHub](https://github.com/Bh-Ayush) | [Portfolio](https://ayush-hb.com)
+**Ayush Bhardwaj** -- [GitHub](https://github.com/Bh-Ayush) | [Portfolio](https://ayush-hb.com)
 
 B.S. Data Science, Arizona State University | M.S. Business Analytics (Aug 2026)
