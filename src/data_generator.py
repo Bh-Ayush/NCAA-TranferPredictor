@@ -1,8 +1,8 @@
 """
-Synthetic data generator for NCAA Basketball Transfer Portal project.
+Synthetic data generator for NCAA Basketball Transfer Portal project produced by Claude.
 
 Generates realistic data mirroring BartTorvik player-level and team-level schemas.
-Used for development and demonstration when live API access is unavailable.
+Used for development and demonstration ONLY when live API access is unavailable.
 Replace with real data via src/scrapers.py for production use.
 
 BartTorvik columns reference:
