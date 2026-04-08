@@ -1,7 +1,7 @@
 """
 Feature engineering for both the Transfer Success Model and Team Ranking Engine.
 
-All ingestion and transformation uses Polars.
+Ingestions and transformations uses Polars.
 Output DataFrames are converted to pandas only at the model boundary
 for scikit-learn/XGBoost compatibility.
 """
