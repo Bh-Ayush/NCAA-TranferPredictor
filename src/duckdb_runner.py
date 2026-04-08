@@ -1,6 +1,6 @@
 """
-Execute analytical SQL queries against the dataset using DuckDB.
-Demonstrates DuckDB integration with parquet files.
+Execute the analytical SQL queries against the dataset using DuckDB.
+DuckDB integration with parquet files.
 """
 
 import duckdb
@@ -9,8 +9,7 @@ from pathlib import Path
 
 def run_queries(sql_file: str = "sql/queries.sql", verbose: bool = True) -> dict:
     """
-    Execute all SQL queries in the queries file.
-    Returns results as a dict of query_name -> DataFrame.
+    Execute all SQL queries in the queries file. Returns results as a dict of query_name to DataFrame.
     """
     con = duckdb.connect(database=":memory:")
 
