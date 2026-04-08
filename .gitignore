@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (regenerate via data_generator.py or scrapers.py)
+data/raw/*.parquet
+data/processed/*.parquet
+
+# Models (regenerate via pipeline)
+models/*.json
+models/*.txt
+models/*.csv
+models/*.pdf
+
+# Plots (regenerate via pipeline)
+plots/*.png
+
+# Notebook builder artifacts
+notebooks/build_notebooks.py
+notebooks/build_pdf_summary.py
